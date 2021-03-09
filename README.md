@@ -15,29 +15,13 @@ Note last two values in totalRevenueT are analyst projections in this case, this
 I'm looking to elimate the need for outside analyst ratings
 
 ```python
+cashFlowFromOperationsT = [81266000, 66231000, 64225000, 77434000] # Cash Flow Statemenet line item
+capExT = [-11247000, -12734000, -12451000, -13313000] # Capital Expeditures: Cash Flow Statement line item
+netIncomeT = [53394000, 45687000, 48351000, 59531000] # Income
+totalRevenueT = [233715000, 215639000, 229234000, 265595000, 257310000, 269680000]
+
 testDCF = DiscountedCashFlow(cashFlowFromOperationsT, capExT, netIncomeT, totalRevenueT, 8.4/100, 2.5/100, 4601075)
-
-print(testDCF.freeCashFlowToEquity)
-
-print(testDCF.fcfeToNetIncome)
-
-print(testDCF.projectedFCFERate)
-
-print(testDCF.revenueGrowthRate)
-
-print(testDCF.netIncomeMargins)
-
-print(testDCF.netIncomeMarginsAverage)
-
-print(testDCF.projectedRevenue)
-
-print(testDCF.projectedNetIncome)
-
-print(testDCF.projectedFCFE)
-
-print(testDCF.terminalValue)
-
-print(testDCF.presentValueOfFCFE)
+testDCF.buildModel()
 
 #This is the value you're after
 print(testDCF.fairStockPrice)

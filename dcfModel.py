@@ -12,7 +12,7 @@ class DiscountedCashFlow:
         # variables to hold key information across methods
         self.freeCashFlowToEquity = [] # cash flow from operations - capEx
         self.fcfeToNetIncome = [] # free cash flow to equity / net income (represented as a percent value)
-        self.revenueGrowthRate = 0 # our deteremined revenue growth rate
+        self.revenueGrowthRate = 0 # our determined revenue growth rate
         self.projectedRevenue = []
         self.projectedFCFERate = 0 # Note FCFE --> "Free Cash Flow to Equity"
         self.projectedFCFE = []
@@ -24,58 +24,55 @@ class DiscountedCashFlow:
         self.currentEstimatedValue = 0  # "Today's Value"
         self.fairStockPrice = 0  # "Fair Value of Equity" on a per share basis
 
-        # function calls to build out the model automatically
-        self.calculateFCFE()
-        self.calculateFCFEtoNetIncome()
-        self.calculateRevenueGrowthRate()
-        self.calculateNetIncomeMargins()
-        self.projectRevenueGrowth()
-        self.projectNetIncome()
-        self.projectFCFE()
-        self.calculateTerminalValue()
-        self.calculatePresentValueOfFCFE()
-        self.getValue()
-
 
     def calculateFCFE(self): # Calculate Free Cash Flow to Equity
         for ce, cffo in zip(self.capEx, self.cashFlowFromOperations):
             self.freeCashFlowToEquity.append(cffo+ce)
 
-    def calculateFCFEtoNetIncome(self):
+    def calculateFCFEtoNetIncome(self, nonZeroMin):
         for ni, fcfe in zip(self.netIncome, self.freeCashFlowToEquity):
-            self.fcfeToNetIncome.append(fcfe/ni) # potentiall truncate / round this
-        self.projectedFCFERate = min(self.fcfeToNetIncome) # ADJUST -- set to min for testing, explore other values such as average
+            self.fcfeToNetIncome.append(round(fcfe/ni, 2))
+        # whether or not to use the non zero min or the average
+        if nonZeroMin:
+            self.projectedFCFERate = round(min(i for i in self.fcfeToNetIncome if i > 0), 2)
+        else:
+            self.projectedFCFERate = round(sum(self.fcfeToNetIncome) / len(self.fcfeToNetIncome), 2)
 
     def calculateRevenueGrowthRate(self):
         # self.totalRevenue = totalRevenue
         growthRates = []
         for i in range(len(self.totalRevenue)-1):
             growthRates.append((self.totalRevenue[i+1]-self.totalRevenue[i])/self.totalRevenue[i])
-        self.revenueGrowthRate = sum(growthRates) / len(growthRates) #REMOVE -- this is for testing
+        self.revenueGrowthRate = round(sum(growthRates) / len(growthRates), 2)
 
-    def projectRevenueGrowth(self):
-        # this whole function needs to be adjusted for automation
-        self.projectedRevenue.append(self.totalRevenue[-2])
-        self.projectedRevenue.append(self.totalRevenue[-1])
-        self.projectedRevenue.append(self.projectedRevenue[1]*(1+self.revenueGrowthRate))
-        self.projectedRevenue.append(self.projectedRevenue[2] * (1 + self.revenueGrowthRate))
-
+    def projectRevenueGrowth(self, withAnalyst):
+        # If analyst projections are used ### NOTE: Only the last two values may be analyst projections ###
+        if withAnalyst:
+            self.projectedRevenue.append(self.totalRevenue[-2])
+            self.projectedRevenue.append(self.totalRevenue[-1])
+            self.projectedRevenue.append(round(self.projectedRevenue[1]*(1+self.revenueGrowthRate)))
+            self.projectedRevenue.append(round(self.projectedRevenue[2] * (1 + self.revenueGrowthRate)))
+        # If analyst projections are not used
+        else:
+            self.projectedRevenue.append(round(self.totalRevenue[-1] * (1 + self.revenueGrowthRate)))
+            for i in range(3):
+                self.projectedRevenue.append(round(self.projectedRevenue[i] * (1 + self.revenueGrowthRate)))
 
     def calculateNetIncomeMargins(self):
         for ni, tr in zip(self.netIncome, self.totalRevenue):
-            self.netIncomeMargins.append(ni / tr)
-        self.netIncomeMarginsAverage = sum(self.netIncomeMargins) / len(self.netIncomeMargins)  # - 0.00884798731206756 REMOVE, this is for testing
+            self.netIncomeMargins.append(round(ni/tr, 2))
+        self.netIncomeMarginsAverage = round(sum(self.netIncomeMargins) / len(self.netIncomeMargins), 2)
 
     def projectNetIncome(self):
         for pr in self.projectedRevenue:
-            self.projectedNetIncome.append(pr*self.netIncomeMarginsAverage)
+            self.projectedNetIncome.append(round(pr*self.netIncomeMarginsAverage))
 
     def projectFCFE(self):
         for pni in self.projectedNetIncome:
-            self.projectedFCFE.append(pni*self.projectedFCFERate)
+            self.projectedFCFE.append(round(pni*self.projectedFCFERate))
 
     def calculateTerminalValue(self):
-        self.terminalValue = (self.projectedFCFE[-1]*(1+self.perpetualGrowthRate))/(self.requiredRateOfReturn-self.perpetualGrowthRate)
+        self.terminalValue = round((self.projectedFCFE[-1]*(1+self.perpetualGrowthRate))/(self.requiredRateOfReturn-self.perpetualGrowthRate))
 
     def calculatePresentValueOfFCFE(self):
         i = 1
@@ -85,14 +82,27 @@ class DiscountedCashFlow:
             i += 1
 
         for fcfe, df in zip(self.projectedFCFE, discountFactors):
-            self.presentValueOfFCFE.append(fcfe/df)
+            self.presentValueOfFCFE.append(round(fcfe/df))
 
         # calculate the pv for terminal value and append
-        self.presentValueOfFCFE.append(self.terminalValue/discountFactors[-1])
+        self.presentValueOfFCFE.append(round(self.terminalValue/discountFactors[-1]))
 
     def getValue(self):
         self.currentEstimatedValue = sum(self.presentValueOfFCFE)
-        self.fairStockPrice = self.currentEstimatedValue / self.sharesOutstanding
+        self.fairStockPrice = round(self.currentEstimatedValue / self.sharesOutstanding, 2)
+
+    # function calls to build out the model automatically
+    def buildModel(self, fcfcToNetIncomeMin=True, analystProjections=True):
+        self.calculateFCFE()
+        self.calculateFCFEtoNetIncome(fcfcToNetIncomeMin) # False to use average over non zero min
+        self.calculateRevenueGrowthRate()
+        self.calculateNetIncomeMargins()
+        self.projectRevenueGrowth(analystProjections) # True to use analyst projections
+        self.projectNetIncome()
+        self.projectFCFE()
+        self.calculateTerminalValue()
+        self.calculatePresentValueOfFCFE()
+        self.getValue()
 
 
 
